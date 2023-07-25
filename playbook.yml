@@ -1,0 +1,78 @@
+- name: Installation du serveur
+  hosts: webservers
+  become: yes
+  become_user: root
+  become_method: sudo
+  tasks: 
+    - name: get the username running the deploy
+      command: whoami
+      register: username_on_the_host
+    - debug: var=username_on_the_host
+    - name: Install a list of packages
+      ansible.builtin.apt:
+        update_cache: yes
+        pkg:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+    - name: One way to avoid apt_key once it is removed from your distro
+      block:
+        - name: install docker gpg key
+          ansible.builtin.apt_key:
+            url: https://download.docker.com/linux/debian/gpg
+            state: present
+        - name: Recupération repo docker /install docker repo
+          ansible.builtin.apt_repository:
+            repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release | lower }} stable"
+            state: present
+            update_cache: true
+    - name: Installation Docker / Install docker 
+      ansible.builtin.apt:
+        update_cache: yes
+        pkg:
+          - docker-ce
+          - docker-ce-cli 
+          - containerd.io
+          - docker-compose-plugin
+          - python3-pip
+          - python3-docker
+    - name: Install PostgreSQL development package (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name: libpq-dev
+        state: present
+      when: ansible_distribution in ['Debian', 'Ubuntu']
+    - name: Installer le paquet docker-compose / Install the docker-compose package
+      apt:
+        name: docker-compose
+        state: present
+    - name: Assurez-vous qu'un menu fixe est en cours d'exécution / Make sure a docker is running
+      ansible.builtin.systemd:
+        state: started
+        name: docker
+    - name: Créer un répertoire s'il n'existe pas / Create a directory if it does not exist
+      ansible.builtin.file:
+        path: /opt/dockers
+        state: directory
+        mode: '0640'
+    - name: rsync installed
+      ansible.builtin.package:
+        name: rsync
+        state: present
+    - name: Synchronisation à l'aide du protocole rsync (push) / Synchronization using rsync protocol (push)
+      ansible.posix.synchronize:
+        src: ./docker-app
+        dest: /opt
+        # rsync_opts:
+        # ssh_connection_multiplexing:
+        # use_ssh_args:
+    # - name: copie de fichier avec playbook / copying file with playbook
+    #   become: true 
+    #   copy:
+    #     src: ./docker-app
+    #     dest: /opt     
+    #     mode: '0640'
+    - name: Create and start services
+      community.docker.docker_compose:
+        project_src: /opt/docker-app
+        build: yes

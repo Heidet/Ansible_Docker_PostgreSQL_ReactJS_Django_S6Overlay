@@ -1,0 +1,10 @@
+version: '3'
+services:  
+  dockerapp:
+    container_name: dockerapp
+    build: ./docker
+    ports:
+      - "80:80"
+    volumes: 
+      - /opt/appdata/dockerapp/db:/data
+      - /opt/appdata/dockerapp/media:/media
