@@ -1,2 +1,2 @@
 [webservers]
-51.254.39.24 ansible_user=debian
+HOSTNAME ansible_user=debian
